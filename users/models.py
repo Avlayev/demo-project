@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser, AbstractBaseUser, UserManager
+from rest_framework_simplejwt.tokens import RefreshToken
 
+from shared.models import BaseModel
 
 ORDINARY_USER, MANAGER, SUPER_ADMIN = (
     'ordinary_user',
@@ -16,6 +18,13 @@ VIA_EMAIL, VIA_PHONE, VIA_USERNAME = (
     'via_email',
     'via_phone',
     'via_phone'
+)
+
+NEW, CODE_VERIFIED, INFORMATION_FILLED, DONE = (
+    'NEW',
+    'CODE_VERIFIED',
+    'INFORMATION_FILLED',
+    'DONE'
 )
 
 MALE, FEMALE = (
@@ -49,7 +58,7 @@ class UserConfirmation(models.Model):
             super(UserConfirmation, self).save(*args, **kwargs)
 
 
-class User(AbstractUser):
+class User(AbstractUser, BaseModel):
     _validator_phone = RegexValidator(
         regex=r"^9\d{12}$" ,#r'^9989[0-9]{9}$'
         message="Telefon raqamingizni kiriting: 9 bilan boshlansin va 12 ta raqamdan iborat bo'lsin"
@@ -66,6 +75,14 @@ class User(AbstractUser):
         (VIA_PHONE, VIA_PHONE),
         (VIA_USERNAME, VIA_USERNAME),
     )
+
+    AUTH_STATUS = (
+        (NEW, NEW),
+        (CODE_VERIFIED, CODE_VERIFIED),
+        (INFORMATION_FILLED, INFORMATION_FILLED),
+        (DONE, DONE)
+    )
+
 
     SEX_CHOICES = (
         (MALE, MALE),
@@ -86,14 +103,22 @@ class User(AbstractUser):
 
 
 
-
-
-
-
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
     def create_verify_code(self, verify_type):
         code = "".join([str(random.randint(0, 100) % 10) for _ in range(4)])
+        UserConfirmation.object.create(
+            user_id = 'user_id',
+            verify_type='verify_type',
+            code='code'
+        )
+        return code
 
+    def tokens(self):
+        refresh = RefreshToken.for_user(self)
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }
